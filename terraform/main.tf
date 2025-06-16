@@ -130,8 +130,8 @@ resource "google_container_node_pool" "primary_nodes" {
     }
 
     kubelet_config {
-      cpu_cfs_quota  = false
-      pod_pids_limit = 0
+      cpu_cfs_quota      = false
+      pod_pids_limit     = 0
       cpu_manager_policy = ""
     }
 
