@@ -33,3 +33,8 @@ output "gateway_ip" {
 output "dns_name" {
   value = "${var.subdomain}.${var.domain_name}"
 }
+
+output "artifact_registry_url" {
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repository.repository_id}"
+  description = "Artifact Registry URL for Docker images"
+}

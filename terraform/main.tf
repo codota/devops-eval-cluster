@@ -150,6 +150,12 @@ resource "google_project_iam_member" "gke_sa_cloudsql" {
   member  = "serviceAccount:${google_service_account.gke_sa.email}"
 }
 
+resource "google_project_iam_member" "gke_sa_artifact_registry" {
+  project = var.project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.gke_sa.email}"
+}
+
 # Cloud SQL Instance
 resource "google_sql_database_instance" "postgres" {
   name             = "${var.cluster_name}-postgres"
@@ -250,4 +256,15 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   network                 = "projects/${var.project_id}/global/networks/default"
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
+}
+
+resource "google_artifact_registry_repository" "docker_repository" {
+  repository_id = "docker-repository"
+  location      = var.region
+  format        = "DOCKER"
+  description   = "Docker repository for task API"
+
+  docker_config {
+    immutable_tags = false
+  }
 }
