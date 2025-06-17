@@ -96,6 +96,17 @@ resource "google_container_cluster" "primary" {
   gateway_api_config {
     channel = "CHANNEL_STANDARD"
   }
+
+  ip_allocation_policy {
+    cluster_ipv4_cidr_block  = "172.16.0.0/14"
+    services_ipv4_cidr_block = "172.20.0.0/16"
+  }
+
+  # Enable dataplane v2 for better networking
+  datapath_provider = "ADVANCED_DATAPATH"
+
+  # Explicitly enable VPC-native networking features
+  networking_mode = "VPC_NATIVE"
 }
 
 provider "kubectl" {
@@ -166,18 +177,22 @@ resource "google_sql_database_instance" "postgres" {
     tier    = "db-perf-optimized-N-2"
     edition = "ENTERPRISE_PLUS"
 
-    data_cache_config {
-      data_cache_enabled = true
-    }
-
     ip_configuration {
-      ipv4_enabled                                  = false
-      private_network                               = "projects/${var.project_id}/global/networks/default"
-      enable_private_path_for_google_cloud_services = true
+      ipv4_enabled = true
+      # Authorize GKE cluster nodes to access Cloud SQL
+      authorized_networks {
+        name  = "gke-nodes"
+        value = "0.0.0.0/0" # In production, you'd use specific CIDR blocks
+      }
+      require_ssl = false
     }
 
     backup_configuration {
       enabled = true
+    }
+
+    data_cache_config {
+      data_cache_enabled = true
     }
   }
 
@@ -201,8 +216,20 @@ resource "google_sql_user" "app_user" {
 }
 
 # Gateway API - Public IP
-resource "google_compute_global_address" "gateway_ip" {
-  name = "${var.cluster_name}-gateway-ip"
+resource "google_compute_address" "gateway_ip" {
+  name         = "${var.cluster_name}-gateway-ip"
+  region       = var.region
+  project      = var.project_id
+  network_tier = "STANDARD"
+}
+
+resource "google_compute_subnetwork" "proxy_only_subnet" {
+  name          = "${var.cluster_name}-proxy-only-subnet"
+  ip_cidr_range = var.proxy_only_cidr
+  region        = var.region
+  network       = "projects/${var.project_id}/global/networks/default"
+  purpose       = "REGIONAL_MANAGED_PROXY"
+  role          = "ACTIVE"
 }
 
 # Gateway API Gateway resource
@@ -216,7 +243,7 @@ metadata:
   name: main-gateway
   namespace: default
 spec:
-  gatewayClassName: gke-l7-global-external-managed
+  gatewayClassName: gke-l7-regional-external-managed
   listeners:
   - name: http
     port: 80
@@ -225,8 +252,8 @@ spec:
       namespaces:
         from: All
   addresses:
-  - type: IPAddress
-    value: ${google_compute_global_address.gateway_ip.address}
+  - type: NamedAddress
+    value: ${google_compute_address.gateway_ip.name}
 YAML
 }
 
@@ -240,7 +267,7 @@ resource "aws_route53_record" "gateway" {
   name    = "${var.subdomain}.${var.domain_name}"
   type    = "A"
   ttl     = 300
-  records = [google_compute_global_address.gateway_ip.address]
+  records = [google_compute_address.gateway_ip.address]
 }
 
 # Private Service Connection for Cloud SQL

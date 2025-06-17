@@ -21,13 +21,13 @@ output "database_password" {
 }
 
 output "database_url" {
-  value       = "postgresql://appuser:${random_password.db_password.result}@${google_sql_database_instance.postgres.private_ip_address}:5432/taskdb"
+  value       = "postgresql://appuser:${random_password.db_password.result}@${google_sql_database_instance.postgres.ip_address.0.ip_address}:5432/taskdb"
   sensitive   = true
   description = "Complete database URL for application"
 }
 
 output "gateway_ip" {
-  value = google_compute_global_address.gateway_ip.address
+  value = google_compute_address.gateway_ip.address
 }
 
 output "dns_name" {
