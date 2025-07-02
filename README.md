@@ -24,6 +24,7 @@ gcloud container clusters get-credentials devops-eval-cluster --project devops-e
 Then clone the [service repo](https://github.com/codota/devops-eval-service) and run
 
 ```
+docker buildx build --platform linux/amd64 . -t us-central1-docker.pkg.dev/devops-eval-463110/docker-repository/tasks-service:1.0.5 --push
 helm upgrade --install -n eval --create-namespace tasks helm/ --set "database.url=$DB_URL"
 ```
 
