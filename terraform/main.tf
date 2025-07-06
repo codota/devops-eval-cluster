@@ -205,8 +205,8 @@ resource "google_sql_database" "app_db" {
 }
 
 resource "random_password" "db_password" {
-  length  = 16
-  special = true
+  length  = 20
+  special = false
 }
 
 resource "google_sql_user" "app_user" {
